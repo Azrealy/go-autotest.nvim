@@ -30,7 +30,7 @@ local add_golang_test = function(state, entry)
 		for i in string.gmatch(entry.Test, "[^/]+") do
 			table.insert(index, i)
 		end
-		line = find_test_line(state.bufnr, 'name: "' .. index[2])
+		line = find_test_line(state.bufnr, '"' .. index[2])
 	end
 	state.tests[make_key(entry)] = { name = entry.Test, line = line, output = {} }
 end
@@ -117,6 +117,7 @@ local function go_test_job(command, state, bufnr)
 					end
 					add_golang_output(state, decoded)
 				elseif decoded.Action == "pass" or decoded.Action == "fail" then
+					P(state)
 					mark_success(state, decoded)
 					local test = state.tests[make_key(decoded)]
 					if test.success then
@@ -152,7 +153,17 @@ local function go_test_job(command, state, bufnr)
 		end,
 	})
 end
-M.attach_to_buffer = function(bufnr, command)
+local function folder_name()
+	local file = vim.api.nvim_buf_get_name(0)
+	local path = {}
+	for w in file:gmatch("(.-)/") do
+		table.insert(path, w)
+	end
+	return path[#path]
+end
+
+M.attach_to_buffer = function(bufnr)
+	local command = { "go", "test", "./.../" .. folder_name(), "-v", "--json" }
 	local state = { bufnr = bufnr, tests = {} }
 	api.nvim_buf_create_user_command(bufnr, "GoTestLineDiag", function()
 		local line = vim.fn.line(".") - 1
