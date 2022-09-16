@@ -100,9 +100,20 @@ local function open_window(output)
 	api.nvim_buf_add_highlight(buf, -1, "WhidHeader", 0, 0, -1)
 	api.nvim_buf_set_lines(buf, 1, -1, false, output)
 end
+local function test_folder_path()
+	local file = vim.api.nvim_buf_get_name(0)
+	local path = ""
+	for w in file:gmatch("(.-)/") do
+		if vim.endswith(w, ".go") ~= true then
+			path = path .. w .. "/"
+		end
+	end
+	return path
+end
 local function go_test_job(command, state, bufnr)
 	vim.fn.jobstart(command, {
 		stdout_buffered = true,
+		cwd = test_folder_path(),
 		on_stdout = function(_, data)
 			for _, line in ipairs(data) do
 				if line == "" then
@@ -153,17 +164,16 @@ local function go_test_job(command, state, bufnr)
 		end,
 	})
 end
-local function folder_name()
-	local file = vim.api.nvim_buf_get_name(0)
-	local path = {}
-	for w in file:gmatch("(.-)/") do
-		table.insert(path, w)
-	end
-	return path[#path]
-end
-
+-- local function folder_name()
+-- 	local file = vim.api.nvim_buf_get_name(0)
+-- 	local path = {}
+-- 	for w in file:gmatch("(.-)/") do
+-- 		table.insert(path, w)
+-- 	end
+-- 	return path[#path]
+-- end
 M.attach_to_buffer = function(bufnr)
-	local command = { "go", "test", "./.../" .. folder_name(), "-v", "--json" }
+	local command = { "go", "test", "./...", "-v", "--json" }
 	local state = { bufnr = bufnr, tests = {} }
 	api.nvim_buf_create_user_command(bufnr, "GoTestLineDiag", function()
 		local line = vim.fn.line(".") - 1
